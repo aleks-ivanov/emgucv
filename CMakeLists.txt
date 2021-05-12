@@ -38,7 +38,7 @@ ENDIF()
 
 
 PROJECT(emgucv)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.9.4)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 cmake_policy(SET CMP0022 NEW)
 cmake_policy(SET CMP0069 NEW)
 
@@ -160,6 +160,13 @@ IF("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   SET(CMAKE_CXX_FLAGS_DEBUG "-flto ${CMAKE_CXX_FLAGS_DEBUG}")
   SET(CMAKE_EXE_LINKER_FLAGS "-flto ${CMAKE_EXE_LINKER_FLAGS}")
   SET(CMAKE_SHARED_LINKER_FLAGS "-flto ${CMAKE_SHARED_LINKER_FLAGS}")
+  #SET(CMAKE_STATIC_LINKER_FLAGS "-flto ${CMAKE_STATIC_LINKER_FLAGS}")
+
+  set(CMAKE_AR "emcc")
+  set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+  set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> -flto -r -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+  set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> -flto -r -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+
 ENDIF()
 
 #IF( NOT (NETFX_CORE OR ANDROID OR IOS ) )
@@ -212,7 +219,7 @@ ENDIF()
 INCLUDE (CheckTargetArch)
 INCLUDE (OpenCVVersion)
 
-SET(LIBRARY_3RDPARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/3rdParty)
+#SET(LIBRARY_3RDPARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/3rdParty)
 
 # ----------------------------------------------------------------------------
 #  Autodetect if we are in a GIT repository
@@ -321,6 +328,8 @@ ENDIF()
 
 IF(ANDROID)
   SET(UNMANAGED_LIBRARY_OUTPUT_SUBFOLDER "/android/${ANDROID_ABI}")
+ELSEIF("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
+  SET(UNMANAGED_LIBRARY_OUTPUT_SUBFOLDER "/webgl")
 ELSEIF(WIN32)
   MESSAGE(STATUS "<<<< MSVC_C_ARCHITECTURE_ID: ${MSVC_C_ARCHITECTURE_ID} >>>>") 
   IF ("${EMGUCV_ARCH}" STREQUAL "win64")
@@ -464,7 +473,7 @@ IF(IOS)
   ENDIF()
   #CHECK_BINARY_EXIST("libs/iOS" "libcvextern_arm64.a" HAVE_IOS_ARM64 ${IS_IOS_ARM64_BUILD})
 ENDIF()
-CHECK_BINARY_EXIST("libs/iOS" "libcvextern.a" HAVE_IOS ${IS_IOS_BUILD})
+CHECK_BINARY_EXIST("libs/iOS" "libcvextern_iphoneos.a" HAVE_IOS ${IS_IOS_BUILD})
 
 #IF(NOT HAVE_IOS)
 #  IF(HAVE_IOS_I386 OR HAVE_IOS_X86_64 OR HAVE_IOS_ARMV7S OR HAVE_IOS_ARMV7 OR HAVE_IOS_ARM64)
@@ -608,6 +617,13 @@ IF (("${TARGET_ARCH_NAME}" STREQUAL "ubuntu_x64"))
   MESSAGE(STATUS "IS_UBUNTU_X64_BUILD: ${IS_UBUNTU_X64_BUILD}")
 ENDIF()
 CHECK_BINARY_EXIST("libs/x64" "*.so" HAVE_LINUX_X64 ${IS_UBUNTU_X64_BUILD})
+
+SET(IS_UBUNTU_ARM64_BUILD OFF)
+IF (("${TARGET_ARCH_NAME}" STREQUAL "ubuntu_arm64"))
+  SET(IS_UBUNTU_ARM64_BUILD ON)
+  MESSAGE(STATUS "IS_UBUNTU_ARM64_BUILD: ${IS_UBUNTU_ARM64_BUILD}")
+ENDIF()
+CHECK_BINARY_EXIST("libs/arm64" "*.so" HAVE_LINUX_ARM64 ${IS_UBUNTU_ARM64_BUILD})
  
   IF(HAVE_WINDESKTOP_X86 AND HAVE_WINDESKTOP_X64)
     SET(WINDESKTOP_LABEL "-windesktop") 
@@ -659,7 +675,7 @@ CHECK_BINARY_EXIST("libs/x64" "*.so" HAVE_LINUX_X64 ${IS_UBUNTU_X64_BUILD})
     SET(MACOS_LABEL "-macos")
   ENDIF()
 
-IF (IS_RASPBIAN_BUILD OR IS_UBUNTU_X64_BUILD OR IS_UBUNTU_X86_BUILD OR HAVE_LINUX_ARM OR HAVE_LINUX_X64 OR HAVE_LINUX_X86)
+IF (IS_RASPBIAN_BUILD OR IS_UBUNTU_X64_BUILD OR IS_UBUNTU_X86_BUILD OR IS_UBUNTU_ARM64_BUILD OR HAVE_LINUX_ARM OR HAVE_LINUX_ARM64 OR HAVE_LINUX_X64 OR HAVE_LINUX_X86)
   SET(HAVE_LINUX ON)
 ELSE()
   SET(HAVE_LINUX OFF)
@@ -893,7 +909,7 @@ ELSE()
 ENDIF()
 
 IF(TESSERACT_OPENCL)
-  ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/lib/opencl-icd-1.2.11.0/icd)
+  ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/3rdParty/opencl-icd-1.2.11.0/icd)
 ENDIF()
 
 IF (TARGET_ARCH_64)
@@ -1001,7 +1017,7 @@ IF(HAVE_LINUX_ARM)
 	SET(EMGUCV_RASPBERRY_PI_NUGET_ID "${EMGUCV_NUGET_ID}.runtime.${NUGET_NATIVE_PLATFORM_ID_RASPBIAN}")
 ENDIF()
 
-IF(HAVE_LINUX_X64 OR HAVE_LINUX_X86)
+IF(HAVE_LINUX_X64 OR HAVE_LINUX_X86 OR HAVE_LINUX_ARM64)
 	SET(EMGUCV_UBUNTU_NUGET_ID "${EMGUCV_NUGET_ID}.runtime.${NUGET_NATIVE_PLATFORM_ID_UBUNTU}")
 ENDIF()
 
@@ -1078,6 +1094,8 @@ IF(HAVE_MACOS)
 # <file src=\"Emgu.CV.runtime.macos.targets\" target=\"build\\${EMGUCV_MACOS_NUGET_ID}.targets\" />
   SET(EMGUCV_MACOS_NUGET_FILE_LIST "${EMGUCV_MACOS_NUGET_FILE_LIST} 
     <file src=\"..\\..\\..\\libs\\macos\\*.dylib\" target=\"runtimes\\osx\\native\" />
+    <file src=\"..\\..\\..\\libs\\Emgu.CV.Platform.Mac.dll\" target=\"lib\\Xamarin.Mac\" />
+    <file src=\"..\\..\\..\\libs\\Emgu.CV.Platform.Mac.xml\" target=\"lib\\Xamarin.Mac\" />
     <file src=\"..\\..\\..\\miscellaneous\\nuget_icon.png\" target=\"icon.png\" />
     <file src=\"..\\..\\..\\${EMGUCV_LICENSE_FILE}\" target=\"\" />")
 	SET(EMGUCV_MACOS_NUGET_DEPENDENCY "
@@ -1127,17 +1145,16 @@ IF(HAVE_LINUX_X64)
   SET(EMGUCV_UBUNTU_NUGET_FILE_LIST "${EMGUCV_UBUNTU_NUGET_FILE_LIST} <file src=\"..\\..\\..\\libs\\x64\\*.so\" target=\"runtimes\\${NUGET_NATIVE_PLATFORM_ID_UBUNTU}\\native\" />")
 ENDIF()
 IF(HAVE_LINUX_X86)
-  #SET(EMGUCV_UBUNTU_NUGET_FILE_LIST "${EMGUCV_UBUNTU_NUGET_FILE_LIST} <file src=\"..\\..\\..\\libs\\x86\\*.so\" target=\"build\\x86\" />")
   SET(EMGUCV_UBUNTU_NUGET_FILE_LIST "${EMGUCV_UBUNTU_NUGET_FILE_LIST} <file src=\"..\\..\\..\\libs\\x86\\*.so\" target=\"runtimes\\${NUGET_NATIVE_PLATFORM_ID_UBUNTU}\\native\" />")
 ENDIF()
-IF(HAVE_LINUX_X64 OR HAVE_LINUX_X86)
+IF(HAVE_LINUX_ARM64)
+  SET(EMGUCV_UBUNTU_NUGET_FILE_LIST "${EMGUCV_UBUNTU_NUGET_FILE_LIST} <file src=\"..\\..\\..\\libs\\arm64\\*.so\" target=\"runtimes\\${NUGET_NATIVE_PLATFORM_ID_UBUNTU}\\native\" />")
+ENDIF()
+IF(HAVE_LINUX_X64 OR HAVE_LINUX_X86 OR HAVE_LINUX_ARM64)
     SET(EMGUCV_UBUNTU_NUGET_DEPENDENCY "
     <dependencies>
       <dependency id=\"${EMGUCV_NUGET_ID}\" version=\"${CPACK_PACKAGE_DEPENDENCY_VERSION}\" />
     </dependencies>")
-#	SET(EMGUCV_UBUNTU_NUGET_FILE_LIST "${EMGUCV_UBUNTU_NUGET_FILE_LIST} 
-#    <file src=\"Emgu.CV.runtime.ubuntu.targets\" target=\"build\\${EMGUCV_UBUNTU_NUGET_ID}.targets\" />
-#    <file src=\"..\\..\\..\\miscellaneous\\nuget_icon.png\" target=\"icon.png\" />
 	SET(EMGUCV_UBUNTU_NUGET_FILE_LIST "${EMGUCV_UBUNTU_NUGET_FILE_LIST} 
     <file src=\"..\\..\\..\\miscellaneous\\nuget_icon.png\" target=\"icon.png\" />
     <file src=\"..\\..\\..\\${EMGUCV_LICENSE_FILE}\" target=\"\" />")
@@ -1570,7 +1587,7 @@ if(HAVE_LINUX_ARM)
   CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Emgu.CV.runtime.linux-arm.Package.nuspec.in ${CMAKE_CURRENT_SOURCE_DIR}/platforms/nuget/Emgu.CV.runtime.linux-arm/Package.nuspec)
 ENDIF()
 
-if(HAVE_LINUX_X86 OR HAVE_LINUX_X64)
+if(HAVE_LINUX_X86 OR HAVE_LINUX_X64 OR HAVE_LINUX_ARM64)
   SET(EMGUCV_UBUNTU_NUGET_TITLE "Emgu CV Native Runtime for Ubuntu")
   CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Emgu.CV.runtime.ubuntu.Package.nuspec.in ${CMAKE_CURRENT_SOURCE_DIR}/platforms/nuget/Emgu.CV.runtime.ubuntu/Package.nuspec)
 ENDIF()
@@ -1680,7 +1697,7 @@ FOREACH(OPENCV_MODULE_NAME ${OPENCV_MODULE_NAME_CANDIDATES})
       public const string Opencv${OPENCV_MODULE_NAME_FIRST_LETTER_UPPER}Library = \"${MACOS_UNITY_EDITOR_ENTRYPOINT}\";   
       #elif UNITY_STANDALONE_OSX
       public const string Opencv${OPENCV_MODULE_NAME_FIRST_LETTER_UPPER}Library = \"${MACOS_UNITY_STANDALONE_ENTRYPOINT}\";   
-      #elif __IOS__ || UNITY_IPHONE
+      #elif __IOS__ || UNITY_IPHONE || UNITY_WEBGL
       public const string Opencv${OPENCV_MODULE_NAME_FIRST_LETTER_UPPER}Library = \"${IOS_ENTRYPOINT}\";
       #elif __ANDROID__ || UNITY_ANDROID
       public const string Opencv${OPENCV_MODULE_NAME_FIRST_LETTER_UPPER}Library = \"${ANDROID_ENTRYPOINT}\";
@@ -1703,7 +1720,7 @@ ENDFOREACH()
 
 SET(ENTRYPOINT_MODULES_STRING "public static List<String> OpenCVModuleList = new List<String>
 	  {
-#if !(__ANDROID__ || __IOS__ || UNITY_IPHONE || UNITY_ANDROID || NETFX_CORE)
+#if !(__ANDROID__ || __IOS__ || UNITY_IPHONE  || UNITY_WEBGL || UNITY_ANDROID || NETFX_CORE)
         OpencvFFMpegLibrary,
 #endif        
         ${ENTRYPOINT_MODULES_STRING}

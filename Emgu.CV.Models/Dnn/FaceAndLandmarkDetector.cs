@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -29,9 +30,7 @@ namespace Emgu.CV.Models
         private FaceDetector _faceDetector = null;
         private FacemarkDetector _facemarkDetector = null;
 
-        /// <summary>
-        /// Clear and reset the model. Required Init function to be called again before calling ProcessAndRender.
-        /// </summary>
+        ///<inheritdoc/>
         public void Clear()
         {
             if (_faceDetector != null)
@@ -55,36 +54,62 @@ namespace Emgu.CV.Models
             Clear();
         }
 
+#if UNITY_EDITOR || UNITY_IOS || UNITY_ANDROID || UNITY_STANDALONE || UNITY_WEBGL
+        private IEnumerator InitFaceDetector(DownloadProgressChangedEventHandler onDownloadProgressChanged = null)
+#else
         private async Task InitFaceDetector(DownloadProgressChangedEventHandler onDownloadProgressChanged = null)
+#endif
         {
             if (_faceDetector == null)
             {
                 _faceDetector = new FaceDetector();
+#if UNITY_EDITOR || UNITY_IOS || UNITY_ANDROID || UNITY_STANDALONE || UNITY_WEBGL
+                yield return _faceDetector.Init(onDownloadProgressChanged);
+#else
                 await _faceDetector.Init(onDownloadProgressChanged);
+#endif
             }
         }
 
+#if UNITY_EDITOR || UNITY_IOS || UNITY_ANDROID || UNITY_STANDALONE || UNITY_WEBGL
+        private IEnumerator InitFacemark(DownloadProgressChangedEventHandler onDownloadProgressChanged = null)
+#else
         private async Task InitFacemark(DownloadProgressChangedEventHandler onDownloadProgressChanged = null)
+#endif
         {
             if (_facemarkDetector == null)
             {
                 _facemarkDetector = new FacemarkDetector();
+#if UNITY_EDITOR || UNITY_IOS || UNITY_ANDROID || UNITY_STANDALONE || UNITY_WEBGL
+                yield return _facemarkDetector.Init(onDownloadProgressChanged);
+#else
                 await _facemarkDetector.Init(onDownloadProgressChanged);
+#endif
             }
         }
 
         /// <summary>
-        /// Download and initialize the DNN face and facemark detector
+        /// Download and initialize the facemark detector as well as the DNN face detector
         /// </summary>
         /// <param name="onDownloadProgressChanged">Callback when download progress has been changed</param>
         /// <param name="initOptions">Initialization options. None supported at the moment, any value passed will be ignored.</param>
         /// <returns>Async task</returns>
-        public async Task Init(
-            DownloadProgressChangedEventHandler onDownloadProgressChanged = null, 
+#if UNITY_EDITOR || UNITY_IOS || UNITY_ANDROID || UNITY_STANDALONE || UNITY_WEBGL
+        public IEnumerator
+#else
+        public async Task
+#endif
+            Init(
+            DownloadProgressChangedEventHandler onDownloadProgressChanged = null,
             Object initOptions = null)
         {
+#if UNITY_EDITOR || UNITY_IOS || UNITY_ANDROID || UNITY_STANDALONE || UNITY_WEBGL
+            yield return InitFaceDetector(onDownloadProgressChanged);
+            yield return InitFacemark(onDownloadProgressChanged);
+#else
             await InitFaceDetector(onDownloadProgressChanged);
             await InitFacemark(onDownloadProgressChanged);
+#endif
         }
 
         /// <summary>
