@@ -10,7 +10,7 @@ jobs:
   ci:
     name: Continuous Integration
     # runs-on: windows-latest
-    runs-on: [ self-hosted, Windows ]
+    runs-on: windows-latest
     # two days time out
     timeout-minutes: 2880
     outputs:
