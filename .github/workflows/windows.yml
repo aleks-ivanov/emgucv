@@ -7,42 +7,129 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-
+  ci:
+    name: Continuous Integration
     # runs-on: windows-latest
-    runs-on: [self-hosted, Windows]
-
+    runs-on: [ self-hosted, Windows ]
     # two days time out
     timeout-minutes: 2880
-    
+    outputs:
+      latest_version: ${{ steps.tag_generator.outputs.new_version }}
+      is_push_to_default_branch: ${{ steps.conditionals_handler.outputs.is_push_to_default_branch }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Check out submodules
-      run: git submodule update --init --recursive
-    - name: Build Emgu CV 32-bit native binary
-      run: .\Build_Binary_x86.bat 32 nogpu vc no-openni no-doc no-package build
-      working-directory: ${{ github.workspace }}\platforms\windows\
-    - name: Clean up the 32-bit build
-      run: .\git-clean.bat --keep_binary
-      working-directory: ${{ github.workspace }}\miscellaneous
-    - name: Build Emgu CV 64-bit native binary
-      run: .\Build_Binary_x86.bat 64 nogpu vc no-openni no-doc package build nuget
-      working-directory: ${{ github.workspace }}\platforms\windows\
-    - uses: actions/upload-artifact@v2
-      with:
-        name: emgucv-windows-nsis-build-log
-        path: ${{ github.workspace }}\build_x64\_CPack_Packages\win64\NSIS\*.log
-    - uses: actions/upload-artifact@v2
-      with:
-        name: emgucv-windows-zip-package
-        path: ${{ github.workspace }}\build_x64\*.zip
-    - name: Clean up the non-gpu build
-      run: .\git-clean.bat 
-      working-directory: ${{ github.workspace }}\miscellaneous
-    - name: Build Emgu CV 64-bit native binary with GPU
-      run: .\Build_Binary_x86.bat 64 gpu vc no-openni no-doc package build nuget
-      working-directory: ${{ github.workspace }}\platforms\windows\
-    - uses: actions/upload-artifact@v2
-      with:
-        name: emgucv-windows-gpu-zip-package
-        path: ${{ github.workspace }}\build_x64\*.zip
+      - name: Data gatherer
+        id: data_gatherer
+        shell: pwsh
+        run: |
+          # Get default branch
+          $repo = "${{ github.repository }}"
+          $defaultBranch = Invoke-RestMethod -Method GET -Uri https://api.github.com/repos/$repo | Select-Object -ExpandProperty default_branch
+          Write-Output "::set-output name=default_branch::$(echo $defaultBranch)"
+
+      - name: Conditionals handler
+        id: conditionals_handler
+        shell: pwsh
+        run: |
+          $defaultBranch = "${{ steps.data_gatherer.outputs.default_branch }}"
+          $githubRef = "${{ github.ref }}"
+          $githubEventName = "${{ github.event_name }}"
+          $isDefaultBranch = 'false'
+          $isPush = 'false'
+          $isPushToDefaultBranch = 'false'
+          if ( $githubRef -like "*$defaultBranch*" ) {
+            $isDefaultBranch = 'true'
+          }
+          if ( $githubEventName -eq 'push' ) {
+            $isPush = 'true'
+          }
+          if ( $githubRef -like "*$defaultBranch*" -and $githubEventName -eq 'push' ) {
+            $isPushToDefaultBranch = 'true'
+          }
+          Write-Output "::set-output name=is_default_branch::$(echo $isDefaultBranch)"
+          Write-Output "::set-output name=is_push::$(echo $isPush)"
+          Write-Output "::set-output name=is_push_to_default_branch::$(echo $isPushToDefaultBranch)"
+
+      - name: Setup .NET Core
+        id: setup_dotnet_core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # - name: Checkout submodules
+      #   run: |
+      #     git submodule update --init --recursive
+
+      - if: steps.conditionals_handler.outputs.is_push_to_default_branch == 'true'
+        name: Bump GH tag
+        id: tag_generator
+        uses: mathieudutour/github-tag-action@v5.4
+        with: 
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: false
+          release_branches: ${{ steps.data_gatherer.outputs.default_branch }}
+
+      # - name: Build Emgu CV 32-bit native binary
+      #   run: |
+      #     .\Build_Binary_x86.bat 32 nogpu vc no-openni no-doc no-package build
+      #   working-directory: ${{ github.workspace }}\platforms\windows\
+
+      # - name: Clean up the 32-bit build
+      #   run: |
+      #     .\git-clean.bat --keep_binary
+      #   working-directory: ${{ github.workspace }}\miscellaneous
+
+      # - name: Build Emgu CV 64-bit native binary
+      #   run: |
+      #     .\Build_Binary_x86.bat 64 nogpu vc no-openni no-doc package build nuget
+      #   working-directory: ${{ github.workspace }}\platforms\windows\
+
+      # - name: Upload non-gpu x64 build log as pipeline artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: emgucv-windows-nsis-build-log
+      #     path: ${{ github.workspace }}\build_x64\_CPack_Packages\win64\NSIS\*.log
+
+      # - name: Upload non-gpu x64 build artifacts as pipeline artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: emgucv-windows-zip-package
+      #     path: ${{ github.workspace }}\build_x64\*.zip
+
+      # - name: Clean up the non-gpu build
+      #   run: |
+      #     .\git-clean.bat 
+      #   working-directory: ${{ github.workspace }}\miscellaneous
+
+      # - name: Build Emgu CV 64-bit native binary with GPU
+      #   run: |
+      #     .\Build_Binary_x86.bat 64 gpu vc no-openni no-doc package build nuget
+      #   working-directory: ${{ github.workspace }}\platforms\windows\
+
+      # - name: Upload gpu x64 build artifacts as pipeline artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: emgucv-windows-gpu-zip-package
+      #     path: ${{ github.workspace }}\build_x64\*.zip
+
+  cd:
+    if: needs.ci.outputs.is_push_to_default_branch == 'true' && needs.ci.outputs.latest_version != ''
+    name: Continuous Deployment
+    needs: ci
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Create and publish release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: EmguCV v${{ needs.ci.outputs.latest_version }}
+          tag_name: v${{ needs.ci.outputs.latest_version }}
+          files: |
+            CMakeLists.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
