@@ -122,7 +122,9 @@ jobs:
 
           # gather release assets
           New-Item Release_assets -Type Directory
-          # Move-Item * Release_assets
+          Get-ChildItem libemgucv-windesktop* -Recurse | ForEach-Object {
+            Move-Item $PSitem.FullName Release_assets\
+          }
 
       - name: Upload NuGet packages as pipeline artifact
         uses: actions/upload-artifact@v2
