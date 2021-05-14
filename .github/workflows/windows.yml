@@ -19,7 +19,6 @@ jobs:
     steps:
       - name: Data gatherer
         id: data_gatherer
-        shell: pwsh
         run: |
           # Get default branch
           $repo = "${{ github.repository }}"
@@ -28,7 +27,6 @@ jobs:
 
       - name: Conditionals handler
         id: conditionals_handler
-        shell: pwsh
         run: |
           $defaultBranch = "${{ steps.data_gatherer.outputs.default_branch }}"
           $githubRef = "${{ github.ref }}"
