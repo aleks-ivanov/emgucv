@@ -120,7 +120,7 @@ jobs:
 
           # gather release assets
           New-Item Release_assets -Type Directory
-          Get-ChildItem libemgucv-windesktop* -Recurse | ForEach-Object {
+          Get-ChildItem build_x64\libemgucv-windesktop* | ForEach-Object {
             Move-Item $PSitem.FullName Release_assets\
           }
 
