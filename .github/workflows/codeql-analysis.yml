@@ -39,6 +39,7 @@ jobs:
         uses: github/codeql-action/init@v1
         with:
           languages: csharp
+          queries: security-extended
 
       - name: Build solution
         id: build_solution
