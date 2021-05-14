@@ -114,6 +114,27 @@ jobs:
           name: emgucv-windows-gpu-zip-package
           path: ${{ github.workspace }}\build_x64\*.zip
 
+      - name: Gather deployment artifacts
+        run: |
+          # gather nupkgs
+          New-Item NuGet -Type Directory
+          Move-Item platforms\nuget\*.nupkg NuGet\
+
+          # gather release assets
+          New-Item Release_assets -Type Directory
+          # Move-Item * Release_assets
+
+      - name: Upload NuGet packages as pipeline artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: NuGet_packages
+          path: ${{ github.workspace }}\NuGet\
+
+      - name: Upload release assets as pipeline artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: Release_assets
+          path: ${{ github.workspace }}\Release_assets\
   cd:
     if: needs.ci.outputs.is_push_to_default_branch == 'true' && needs.ci.outputs.latest_version != ''
     name: Continuous Deployment
@@ -122,6 +143,33 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+
+      - name: Download and extract NuGet packages
+        id: dl_packages_artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: NuGet_packages
+          path: NuGet/
+
+      - name: Download and extract release assets
+        id: dl_packages_artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: Release_assets
+          path: Release_assets/
+
+      - name: Push NuGet packages to NuGet.org
+        id: push_nuget_packages
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-ChildItem NuGet/*.nupkg | ForEach-Object {
+            nuget push $PSItem `
+            -ApiKey $env:NUGET_API_KEY `
+            -Source https://api.nuget.org/v3/index.json
+          }
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
       - name: Create and publish release
         id: create_release
