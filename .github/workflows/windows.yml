@@ -15,7 +15,6 @@ jobs:
     timeout-minutes: 2880
     outputs:
       latest_version: ${{ steps.tag_generator.outputs.new_version }}
-      is_push_to_default_branch: ${{ steps.conditionals_handler.outputs.is_push_to_default_branch }}
     steps:
       - name: Data gatherer
         id: data_gatherer
@@ -120,7 +119,7 @@ jobs:
 
           # gather release assets
           New-Item Release_assets -Type Directory
-          Get-ChildItem build_x64\libemgucv-windesktop* | ForEach-Object {
+          Get-ChildItem libemgucv* | ForEach-Object {
             Move-Item $PSitem.FullName Release_assets\
           }
 
@@ -128,15 +127,15 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: NuGet_packages
-          path: ${{ github.workspace }}\NuGet\
+          path: NuGet\
 
       - name: Upload release assets as pipeline artifact
         uses: actions/upload-artifact@v2
         with:
           name: Release_assets
-          path: ${{ github.workspace }}\Release_assets\
+          path: Release_assets\
   cd:
-    if: needs.ci.outputs.is_push_to_default_branch == 'true' && needs.ci.outputs.latest_version != ''
+    if: needs.ci.outputs.latest_version != ''
     name: Continuous Deployment
     needs: ci
     runs-on: windows-latest
