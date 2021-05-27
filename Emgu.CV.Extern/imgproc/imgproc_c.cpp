@@ -291,12 +291,24 @@ void cveInvertAffineTransform(cv::_InputArray* m, cv::_OutputArray* im)
 
 void cveEMD(cv::_InputArray* signature1, cv::_InputArray* signature2, int distType, cv::_InputArray* cost, float* lowerBound, cv::_OutputArray* flow)
 {
-	cv::EMD(*signature1, *signature2, distType, cost ? *cost : (cv::InputArray) cv::noArray(), lowerBound, flow ? *flow : (cv::OutputArray) cv::noArray());
+	cv::EMD(
+		*signature1, 
+		*signature2, 
+		distType, 
+		cost ? *cost : static_cast<cv::InputArray>(cv::noArray()), 
+		lowerBound, flow ? *flow : static_cast<cv::OutputArray>(cv::noArray()));
 }
 
 void cveCalcHist(cv::_InputArray* images, const std::vector<int>* channels, cv::_InputArray* mask, cv::_OutputArray* hist, std::vector<int>* histSize, std::vector<float>* ranges, bool accumulate)
 {
-	cv::calcHist(*images, *channels, mask ? *mask : (cv::InputArray) cv::noArray(), *hist, *histSize, *ranges, accumulate);
+	cv::calcHist(
+		*images, 
+		*channels, 
+		mask ? *mask : static_cast<cv::InputArray>(cv::noArray()), 
+		*hist, 
+		*histSize, 
+		*ranges, 
+		accumulate);
 }
 
 void cveCalcBackProject(cv::_InputArray* images, const std::vector<int>* channels, cv::_InputArray* hist, cv::_OutputArray* dst, const std::vector<float>* ranges, double scale)
@@ -737,4 +749,43 @@ void cveIntelligentScissorsMBGetContour(
 	bool backward)
 {
 	ptr->getContour(*targetPt, *contour, backward);
+}
+
+void cveGetGaussianKernel(
+	int ksize,
+	double sigma,
+	int ktype,
+	cv::Mat* result)
+{
+	cv::Mat m = cv::getGaussianKernel(
+		ksize,
+		sigma,
+		ktype);
+	cv::swap(m, *result);
+}
+
+void cveGetDerivKernels(
+	cv::_OutputArray* kx,
+	cv::_OutputArray* ky,
+	int dx,
+	int dy,
+	int ksize,
+	bool normalize,
+	int ktype)
+{
+	cv::getDerivKernels(*kx, *ky, dx, dy, ksize, normalize, ktype);
+}
+
+void cveGetGaborKernel(
+	CvSize* ksize,
+	double sigma,
+	double theta,
+	double lambd,
+	double gamma,
+	double psi,
+	int ktype,
+	cv::Mat* result)
+{
+	cv::Mat m = cv::getGaborKernel(*ksize, sigma, theta, lambd, gamma, psi, ktype);
+	cv::swap(m, *result);
 }
