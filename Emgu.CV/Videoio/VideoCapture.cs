@@ -474,7 +474,7 @@ namespace Emgu.CV
                 ImageGrabbed(this, new EventArgs());
             return grabbed;
         }
-
+        
         #region Grab process
         /// <summary>
         /// The event to be called when an image is grabbed
@@ -608,6 +608,26 @@ namespace Emgu.CV
         }
 
         /// <summary>
+        /// Same to cv::VideoCapture &gt;gt; cv::Mat function
+        /// </summary>
+        /// <param name="mat">The Mat to be written to. If no more frame is available, the resulting Mat will be empty.</param>
+        public bool Read(Mat mat)
+        {
+            CvInvoke.cveVideoCaptureReadToMat(_ptr, mat);
+            return mat.IsEmpty;
+        }
+        
+        /// <summary>
+        /// Same to cv::VideoCapture &gt;gt; cv::UMat function
+        /// </summary>
+        /// <param name="umat">The UMat to be written to. If no more frame is available, the resulting UMat will be empty.</param>
+        public bool Read(UMat umat)
+        {
+            CvInvoke.cveVideoCaptureReadToUMat(_ptr, umat);
+            return umat.IsEmpty;
+        }
+        
+        /// <summary>
         /// The name of the backend used by this VideoCapture
         /// </summary>
         public String BackendName
@@ -643,16 +663,13 @@ namespace Emgu.CV
         /// <returns> A Bgr image frame. If no more frames are available, null will be returned.</returns>
         public virtual Mat QueryFrame()
         {
-            if (Grab())
+            Mat image = new Mat();
+            if (image.IsEmpty)
             {
-                Mat image = new Mat();
-                Retrieve(image);
-                return image;
-            }
-            else
-            {
+                image.Dispose();
                 return null;
             }
+            return image;
         }
 
         ///<summary> 
@@ -797,6 +814,12 @@ namespace Emgu.CV
         [DllImport(ExternLibrary, CallingConvention = CvInvoke.CvCallingConvention)]
         [return: MarshalAs(CvInvoke.BoolToIntMarshalType)]
         internal static extern bool cveVideoCaptureRead(IntPtr capture, IntPtr frame);
+
+        [DllImport(ExternLibrary, CallingConvention = CvInvoke.CvCallingConvention)]
+        internal static extern void cveVideoCaptureReadToMat(IntPtr capture, IntPtr mat);
+
+        [DllImport(ExternLibrary, CallingConvention = CvInvoke.CvCallingConvention)]
+        internal static extern void cveVideoCaptureReadToUMat(IntPtr capture, IntPtr umat);
 
         [DllImport(ExternLibrary, CallingConvention = CvInvoke.CvCallingConvention)]
         [return: MarshalAs(CvInvoke.BoolToIntMarshalType)]
